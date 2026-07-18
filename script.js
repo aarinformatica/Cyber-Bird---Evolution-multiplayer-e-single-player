@@ -614,14 +614,14 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.beginPath(); ctx.arc(bird.x, bird.y, bird.radius + 12, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
         }
 
-        // Desenha o Laser Local Ativo
-        if (laserActiveTimer > 0) {
-            laserActiveTimer--;
-            ctx.save(); ctx.shadowBlur = 20; ctx.shadowColor = '#ff007f'; ctx.strokeStyle = '#fff';
-            ctx.lineWidth = laserActiveTimer > 5 ? 12 : laserActiveTimer * 2;
-            ctx.beginPath(); ctx.moveTo(bird.x + 15, bird.y); ctx.lineTo(canvas.width, bird.y); stroke();
-            ctx.strokeStyle = '#ff007f'; ctx.lineWidth = laserActiveTimer > 5 ? 4 : 1; ctx.stroke(); ctx.restore();
-        }
+// Desenha o Laser Local Ativo
+if (laserActiveTimer > 0) {
+    laserActiveTimer--;
+    ctx.save(); ctx.shadowBlur = 20; ctx.shadowColor = '#ff007f'; ctx.strokeStyle = '#fff';
+    ctx.lineWidth = laserActiveTimer > 5 ? 12 : laserActiveTimer * 2;
+    ctx.beginPath(); ctx.moveTo(bird.x + 15, bird.y); ctx.lineTo(canvas.width, bird.y); ctx.stroke(); // <--- CORRIGIDO
+    ctx.strokeStyle = '#ff007f'; ctx.lineWidth = laserActiveTimer > 5 ? 4 : 1; ctx.stroke(); ctx.restore();
+}
 
         // Desenha Nave do Player 1
         ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = '#ff007f'; ctx.fillStyle = '#ff007f';
