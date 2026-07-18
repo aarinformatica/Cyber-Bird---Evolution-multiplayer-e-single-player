@@ -1,0 +1,60 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Bird - Ultimate Multiplayer Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- SDK Oficial do Ably para conexões WebSocket -->
+    <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Efeito CRT de linhas de varredura -->
+        <div class="scanlines"></div>
+        
+        <!-- Flash visual usado no Level Up, Impactos e Disparo do Laser -->
+        <div id="flash-effect"></div>
+
+        <!-- Alerta Flutuante de Level Up / Shield / Laser -->
+        <div id="level-alert">LEVEL UP</div>
+
+        <!-- Telas de Menu / Game Over -->
+        <div id="overlay" class="active">
+            <h1 id="game-title" class="neon-text">CYBER<span>BIRD</span></h1>
+            <p id="game-instruction">
+                <span class="highlight">ESPAÇO</span> ou <span class="highlight">CLIQUE ESQUERDO</span> para Voar<br>
+                <span class="highlight">TECLA X</span> ou <span class="highlight">CLIQUE DIREITO</span> para Disparar Laser
+            </p>
+            
+            <!-- Seleção de Modos e Campo de Nome -->
+            <div id="menu-controls">
+                <input type="text" id="player-name" placeholder="DIGITE SEU NICK..." maxlength="12" autocomplete="off">
+                <button id="single-btn" class="menu-btn">SINGLE PLAYER</button>
+                <button id="multi-btn" class="menu-btn style-multi">MULTIPLAYER</button>
+            </div>
+            <div id="connection-status"></div>
+        </div>
+
+        <!-- Interface de Pontuação Ampliada -->
+        <div id="scoreboard">
+            <div class="score-box">LVL: <span id="current-level">1</span></div>
+            <div class="score-box" id="shield-box">SHIELD: <span id="shield-status">OFF</span></div>
+            <div class="score-box"><span id="p1-name">YOU</span>: <span id="current-score">0</span></div>
+            <div class="score-box" id="p2-score-box" style="display: none;"><span id="p2-name">P2</span>: <span id="p2-score">0</span></div>
+            <div class="score-box" id="best-box">BEST: <span id="best-score">0</span></div>
+        </div>
+
+        <!-- Barra de Carregamento do Laser -->
+        <div id="laser-charge-container">
+            <div id="laser-charge-bar"></div>
+            <span id="laser-ready-text">READY</span>
+        </div>
+
+        <!-- Canvas do Jogo -->
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
