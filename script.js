@@ -227,6 +227,8 @@ document.addEventListener('DOMContentLoaded', () => {
             initAudio();
             if (!ablyClient) {
                 connectAbly();
+            } else {
+                updateLobby();
             }
         });
     }
@@ -243,17 +245,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (connectionStatus) connectionStatus.textContent = "Conectando ao Cyber-Net...";
         if (multiBtn) multiBtn.disabled = true;
 
-        ablyClient = new Ably.Realtime({ key: ABLY_KEY });
+        myId = Math.random().toString(36).substring(2, 9);
+        ablyClient = new Ably.Realtime({ key: ABLY_KEY, clientId: myId });
         
         ablyClient.connection.on('connected', () => {
-            myId = ablyClient.auth.clientId || Math.random().toString(36).substring(2, 9);
-            // Entra em uma sala única global padrão para teste prático rápido
             gameChannel = ablyClient.channels.get('cyber-room-default');
             
             if (connectionStatus) connectionStatus.textContent = "Buscando oponente...";
 
             // Gerenciamento de Presença (Lobby)
-            gameChannel.presence.subscribe('enter', updateLobby);
+            gameChannel.presence.subscribe('enter', () => updateLobby());
+            gameChannel.presence.subscribe('present', () => updateLobby());
             gameChannel.presence.subscribe('leave', (member) => {
                 if (member.clientId !== myId) {
                     if (connectionStatus) connectionStatus.textContent = "Oponente desconectou.";
@@ -266,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Mensagens de Eventos de Jogo em Tempo Real
             gameChannel.subscribe('pos', (msg) => {
-                if (msg.data.id !== myId) {
+                if (msg.clientId !== myId) {
                     opponentActive = true;
                     opponentBird.targetY = msg.data.y;
                     opponentBird.velocity = msg.data.v;
@@ -274,18 +276,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             gameChannel.subscribe('laser', (msg) => {
-                if (msg.data.id !== myId) opponentBird.laserActive = 15;
+                if (msg.clientId !== myId) opponentBird.laserActive = 15;
             });
 
             gameChannel.subscribe('score', (msg) => {
-                if (msg.data.id !== myId) {
+                if (msg.clientId !== myId) {
                     opponentScore = msg.data.s;
                     if(p2ScoreDOM) p2ScoreDOM.textContent = opponentScore;
                 }
             });
 
             gameChannel.subscribe('dead', (msg) => {
-                if (msg.data.id !== myId) opponentDead = true;
+                if (msg.clientId !== myId) {
+                    opponentDead = true;
+                    if (!gameActive) evaluateMultiplayerMatch();
+                }
             });
 
             // Canal de sincronia de obstáculos comandados pelo Host
@@ -308,8 +313,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             gameChannel.subscribe('start-sync', () => {
-                if (!gameActive) startMultiplayerGame();
+                startMultiplayerGame();
             });
+            
+            updateLobby();
         });
 
         ablyClient.connection.on('failed', () => {
@@ -321,17 +328,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateLobby() {
         if (!gameChannel) return;
         gameChannel.presence.get((err, members) => {
-            if (err) return;
+            if (err || !members) return;
             if (members.length >= 2) {
                 if (connectionStatus) connectionStatus.textContent = "Oponente Pronto! Iniciando...";
                 
-                // Determina quem é o Host (O primeiro da lista retornado pelo Ably)
-                members.sort((a, b) => a.timestamp - b.timestamp);
-                isHost = (members[0].id === myId || members[0].clientId === myId);
+                let sortedMembers = [...members].sort((a, b) => a.timestamp - b.timestamp);
+                isHost = (sortedMembers[0].clientId === myId);
 
-                setTimeout(() => {
-                    if (gameChannel) gameChannel.publish('start-sync', {});
-                }, 1000);
+                if (isHost) {
+                    setTimeout(() => {
+                        if (gameChannel) gameChannel.publish('start-sync', {});
+                    }, 800);
+                }
             } else {
                 if (connectionStatus) connectionStatus.textContent = "Aguardando Player 2...";
                 isHost = true;
@@ -342,8 +350,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function startMultiplayerGame() {
         isMultiplayer = true;
         if (p2ScoreBox) p2ScoreBox.style.display = 'block';
-        if (bestBox) bestBox.style.display = 'none'; // Esconde recorde local no versus
+        if (bestBox) bestBox.style.display = 'none'; 
         opponentDead = false;
+        opponentActive = true;
         opponentScore = 0;
         if(p2ScoreDOM) p2ScoreDOM.textContent = "0";
         resetGame();
@@ -352,13 +361,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Emissores de Redes síncronos
     function networkSendPos() {
         if (!isMultiplayer || !gameChannel) return;
-        gameChannel.publish('pos', { id: myId, y: bird.y, v: bird.velocity });
+        gameChannel.publish('pos', { y: bird.y, v: bird.velocity });
     }
 
     // Declaração de networkSendScore para corrigir dependências internas do loop
     function networkSendScore() {
         if (!isMultiplayer || !gameChannel) return;
-        gameChannel.publish('score', { id: myId, s: score });
+        gameChannel.publish('score', { s: score });
     }
 
     function eventJump() {
@@ -377,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(laserReadyText) laserReadyText.classList.remove('ready-pulse');
         playSound(900, 'sawtooth', 0.4, 80);
 
-        if (isMultiplayer && gameChannel) gameChannel.publish('laser', { id: myId });
+        if (isMultiplayer && gameChannel) gameChannel.publish('laser', {});
 
         if (flashEffect) {
             flashEffect.classList.remove('flash-active');
@@ -482,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playSound(150, 'sawtooth', 0.5, 40);
         
         if (isMultiplayer && gameChannel) {
-            gameChannel.publish('dead', { id: myId });
+            gameChannel.publish('dead', {});
         }
 
         // Fluxo de validação de fim de partida versus ou solo
@@ -610,7 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
             laserActiveTimer--;
             ctx.save(); ctx.shadowBlur = 20; ctx.shadowColor = '#ff007f'; ctx.strokeStyle = '#fff';
             ctx.lineWidth = laserActiveTimer > 5 ? 12 : laserActiveTimer * 2;
-            ctx.beginPath(); ctx.moveTo(bird.x + 15, bird.y); ctx.lineTo(canvas.width, bird.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(bird.x + 15, bird.y); ctx.lineTo(canvas.width, bird.y); stroke();
             ctx.strokeStyle = '#ff007f'; ctx.lineWidth = laserActiveTimer > 5 ? 4 : 1; ctx.stroke(); ctx.restore();
         }
 
@@ -733,7 +742,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initialDraw() {
-        if (gameActive) return; // Interrompe o loop inicial se o jogo já foi iniciado
+        if (gameActive) return; 
         let now = performance.now();
         let dt = (now - lastTime) / 1000;
         if (dt > 0.1) dt = 0.1;
