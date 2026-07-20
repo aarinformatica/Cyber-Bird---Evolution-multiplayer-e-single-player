@@ -32,6 +32,15 @@
                 <input type="text" id="player-name" placeholder="DIGITE SEU NICK..." maxlength="12" autocomplete="off">
                 <button id="single-btn" class="menu-btn">SINGLE PLAYER</button>
                 <button id="multi-btn" class="menu-btn style-multi">MULTIPLAYER</button>
+                
+                <!-- Novo: Painel de Controle de Voz por Microfone -->
+                <div class="mic-container">
+                    <button id="btn-audio-mode" class="menu-btn style-mic">VOICE CONTROL: OFF</button>
+                    <label class="mic-label">
+                        SENSIBILIDADE: <span id="mic-sens-value">30</span>
+                        <input type="range" id="mic-sensitivity" class="mic-slider" min="5" max="100" value="30">
+                    </label>
+                </div>
             </div>
             <div id="connection-status"></div>
         </div>
