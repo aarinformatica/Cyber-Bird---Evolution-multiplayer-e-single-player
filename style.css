@@ -370,3 +370,65 @@ canvas {
     font-size: 0.9rem;
     letter-spacing: 1px;
 }
+/* ==========================================================================
+   CONTROLES DO MODO MICROFONE (VOICE CONTROL)
+   ========================================================================== */
+.mic-container {
+    margin-top: 15px;
+    padding: 12px;
+    border: 1px dashed #00ffff;
+    background: rgba(0, 0, 0, 0.75);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
+}
+
+.mic-label {
+    color: #00ffff;
+    font-family: monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.mic-slider {
+    width: 100%;
+    accent-color: #ff007f;
+    cursor: pointer;
+    background: #222;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+}
+
+.style-mic {
+    background: transparent;
+    border: 2px solid #ff007f;
+    color: #ff007f;
+    box-shadow: 0 0 10px rgba(255, 0, 127, 0.2);
+    font-size: 12px;
+    padding: 8px;
+    width: 100%;
+    transition: all 0.2s ease;
+}
+
+.style-mic:hover {
+    background: rgba(255, 0, 127, 0.1);
+    box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+}
+
+/* Estado ativo quando o microfone está ligado e escutando */
+.style-mic.active-mode {
+    background: #00ff7f;
+    border-color: #00ff7f;
+    color: #000;
+    box-shadow: 0 0 15px #00ff7f;
+    font-weight: bold;
+}
