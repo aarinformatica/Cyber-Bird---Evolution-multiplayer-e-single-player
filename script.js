@@ -24,6 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const laserChargeBar = document.getElementById('laser-charge-bar');
     const laserReadyText = document.getElementById('laser-ready-text');
 
+    // Novos Elementos da Interface DOM para Controle de Voz
+    const btnAudioMode = document.getElementById('btn-audio-mode');
+    const micSensitivity = document.getElementById('mic-sensitivity');
+    const micSensValue = document.getElementById('mic-sens-value');
+
     // Variáveis de Controle de FPS / Delta Time
     let lastTime = performance.now();
     let gameEngine;
@@ -38,6 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let gameActive = false;
     let laserCharge = 0;         
     let laserActiveTimer = 0;    
+
+    // --- VARIÁVEIS DE CONTROLE DE VOZ (MICROFONE) ---
+    let isVoiceMode = false;
+    let micStream = null;
+    let audioAnalyzer = null;
+    let voiceDataArray = null;
+    let micThreshold = 30; // Valor padrão inicial do slider (0-100)
+    let canVoiceJump = true; // Flag trava para evitar múltiplos saltos contínuos no mesmo som
 
     // --- VARIÁVEIS MULTIPLAYER (ABLY) ---
     let isMultiplayer = false;
@@ -193,7 +206,75 @@ document.addEventListener('DOMContentLoaded', () => {
     background.init();
 
     // ==========================================
-    // CAPTURA DE INPUTS
+    // FUNCIONALIDADE DO MICROFONE (VOICE CONTROL)
+    // ==========================================
+    async function toggleVoiceControl() {
+        initAudio();
+        if (!isVoiceMode) {
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                audioAnalyzer = audioCtx.createAnalyser();
+                audioAnalyzer.fftSize = 256;
+                const source = audioCtx.createMediaStreamSource(micStream);
+                source.connect(audioAnalyzer);
+                voiceDataArray = new Uint8Array(audioAnalyzer.frequencyBinCount);
+                
+                isVoiceMode = true;
+                if (btnAudioMode) btnAudioMode.textContent = "VOICE CONTROL: ON";
+                if (btnAudioMode) btnAudioMode.classList.add('mic-active');
+            } catch (err) {
+                alert("Não foi possível acessar o microfone. Verifique as permissões de áudio!");
+                isVoiceMode = false;
+                if (btnAudioMode) btnAudioMode.textContent = "VOICE CONTROL: OFF";
+                if (btnAudioMode) btnAudioMode.classList.remove('mic-active');
+            }
+        } else {
+            if (micStream) {
+                micStream.getTracks().forEach(track => track.stop());
+            }
+            isVoiceMode = false;
+            audioAnalyzer = null;
+            voiceDataArray = null;
+            if (btnAudioMode) btnAudioMode.textContent = "VOICE CONTROL: OFF";
+            if (btnAudioMode) btnAudioMode.classList.remove('mic-active');
+        }
+    }
+
+    function checkMicInput() {
+        if (!isVoiceMode || !audioAnalyzer || !gameActive) return;
+        
+        audioAnalyzer.getByteFrequencyData(voiceDataArray);
+        let sum = 0;
+        for (let i = 0; i < voiceDataArray.length; i++) {
+            sum += voiceDataArray[i];
+        }
+        let averageVolume = sum / voiceDataArray.length;
+
+        // Compara com o limite definido no Slider de sensibilidade
+        if (averageVolume > micThreshold) {
+            if (canVoiceJump) {
+                eventJump();
+                canVoiceJump = false; // Bloqueia pulos seguidos no mesmo pico de ruído
+            }
+        } else {
+            canVoiceJump = true; // Libera para pular novamente assim que o som baixar
+        }
+    }
+
+    // Ouvintes dos controles do painel de voz
+    if (btnAudioMode) {
+        btnAudioMode.addEventListener('click', () => toggleVoiceControl());
+    }
+
+    if (micSensitivity) {
+        micSensitivity.addEventListener('input', (e) => {
+            micThreshold = parseInt(e.target.value);
+            if (micSensValue) micSensValue.textContent = micThreshold;
+        });
+    }
+
+    // ==========================================
+    // CAPTURA DE INPUTS (TECLADO / MOUSE / TOQUE)
     // ==========================================
     window.addEventListener('keydown', (e) => {
         if (e.code === 'Space') eventJump();
@@ -546,6 +627,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!canvas || !ctx) return;
 
+        // Analisa o microfone se o modo por voz estiver ligado
+        checkMicInput();
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         background.updateAndDraw(dt);
 
@@ -614,14 +698,14 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.beginPath(); ctx.arc(bird.x, bird.y, bird.radius + 12, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
         }
 
-// Desenha o Laser Local Ativo
-if (laserActiveTimer > 0) {
-    laserActiveTimer--;
-    ctx.save(); ctx.shadowBlur = 20; ctx.shadowColor = '#ff007f'; ctx.strokeStyle = '#fff';
-    ctx.lineWidth = laserActiveTimer > 5 ? 12 : laserActiveTimer * 2;
-    ctx.beginPath(); ctx.moveTo(bird.x + 15, bird.y); ctx.lineTo(canvas.width, bird.y); ctx.stroke(); // <--- CORRIGIDO
-    ctx.strokeStyle = '#ff007f'; ctx.lineWidth = laserActiveTimer > 5 ? 4 : 1; ctx.stroke(); ctx.restore();
-}
+        // Desenha o Laser Local Ativo
+        if (laserActiveTimer > 0) {
+            laserActiveTimer--;
+            ctx.save(); ctx.shadowBlur = 20; ctx.shadowColor = '#ff007f'; ctx.strokeStyle = '#fff';
+            ctx.lineWidth = laserActiveTimer > 5 ? 12 : laserActiveTimer * 2;
+            ctx.beginPath(); ctx.moveTo(bird.x + 15, bird.y); ctx.lineTo(canvas.width, bird.y); ctx.stroke();
+            ctx.strokeStyle = '#ff007f'; ctx.lineWidth = laserActiveTimer > 5 ? 4 : 1; ctx.stroke(); ctx.restore();
+        }
 
         // Desenha Nave do Player 1
         ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = '#ff007f'; ctx.fillStyle = '#ff007f';
